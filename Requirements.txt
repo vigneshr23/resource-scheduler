@@ -1,0 +1,7 @@
+1. User to be able to create a new Event 
+2. Save the list of events, and be able to query from DB
+3. Update the list of events - reassign contractore, dnd, update basic details
+
+++++++++++++++++++++++
+Issues:
+>> Creating an event with a resourceId, leads to all-day event by default.
