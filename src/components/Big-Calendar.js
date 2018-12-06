@@ -4,6 +4,8 @@ import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop'
 import events from '../events'
 import moment from 'moment'
 
+import Dialog from './pop-up'
+
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 
 //import dates from '../../src/utils/dates' 
@@ -21,12 +23,57 @@ const DragAndDropCalendar = withDragAndDrop(BigCalendar)
 //let allViews = Object.keys(BigCalendar.Views).map(k => BigCalendar.Views[k])
 //let allViews = ['day', 'work_week']
 
+// custom event ui
+/* function Event({ event }) {
+  return (
+    <span>
+      <strong>{event.title}</strong>
+      {event.desc && ':  ' + event.desc}
+    </span>
+  )
+} */
+
+function EventAgenda({ event }) {
+  return (
+    <span>
+      <em style={{ color: 'magenta' }}>{event.title}</em>
+      <p>{event.desc}</p>
+    </span>
+  )
+}
+
+// class CalEventWrapper extends React.Component {
+//   handleEventClick = ()=>{
+//     console.log('event clicked!')
+//    };
+//   render() {
+//     const {event, theme} = this.props;
+//     return (
+//         <div onClick={this.handleEventClick} style={{zIndex:999, marginTop: 2, backgroundColor: 'smokeWhite', borderRadius: 10}}>
+//             <div style={{paddingRight: 15}}>
+//                 <a href='some-shit' color='default'>
+//                     {event.title}
+//                 </a>
+//             </div>
+//         </div>
+//     )
+//   }
+// }
+
+const MonthEvent = ({ event }) => (
+  <div className={event.someProp ? 'specialEvent':'normalEvent'}>
+    <div className={'eventTime'}>{event.start}</div>
+    <div className={'eventName'}>{event.name}</div>
+  </div>
+);
+
 class Calendar extends React.Component {
   constructor(props) {
     super(props);
 
     this.state = {
         events:events, 
+        open: false,
         isAddModalOpen: false,
         isEditModalOpen: false,
     };
@@ -50,35 +97,38 @@ class Calendar extends React.Component {
       });
     }
   }
-  handleSelect = ({ start, end, slots, action, e }) => {
-    const title = window.prompt('New Event name')
-    const resourceId = parseInt(window.prompt('resourseId? ')) 
-     if (title) {
+  handleSelect = ({ start, end, slots, action, resourceId }) => {
+    console.log({ start, end, slots, action, resourceId })
+    this.setState({type:'create', currentEventSelection: ''})
+    this.handleClickOpen()
+    const title = "window.prompt('New Event name')"
+    //const resourceId = parseInt(window.prompt('resourseId? ')) 
+    //const resourceId = 1 
+    
+    if(title) {
         let events = this.state.events;
         events.push({
             id: (this.state.events[this.state.events.length-1].id)+1,
             start,end,title,resourceId
         })
         this.setState({
-        // events: [
-        //   ...this.state.events,
-        //   {
-        //     start,
-        //     end,
-        //     title,
-        //   },
-        // ],
-        events
+          events
         })
         console.log(this.state)
     }
   }
   showEvent = (event) => {
-      alert(`This is a ${event.title} Event,\n Desc: ${event.desc}`);
-      if(!this.state.isEditModalOpen)
-        this.setState({
-            isEditModalOpen: !this.state.isEditModalOpen
-        })
+      // alert(`This is a ${event.title} Event,\n Desc: ${event.desc}`);
+      // if(!this.state.isEditModalOpen) {
+      //   this.setState({
+      //       isEditModalOpen: !this.state.isEditModalOpen
+      //   })
+      // }
+      this.setState({
+        type: 'display',
+        currentEventSelection: event
+      })
+      this.handleClickOpen()
   }
   resizeEvent = ({ event, start, end }) => {
     const { events } = this.state
@@ -95,9 +145,8 @@ class Calendar extends React.Component {
 
     //alert(`${event.title} was resized to ${start}-${end}`)
   }
-  moveEvent({ event, start, end, isAllDay: droppedOnAllDaySlot }) {
-    console.log(event);
-    console.log(this.state);
+  moveEvent({ event, start, end, resourceId, isAllDay: droppedOnAllDaySlot }) {
+    console.log('move event args: ', {event, start, end, resourceId, droppedOnAllDaySlot});
     const { events } = this.state
 
     const idx = events.indexOf(event)
@@ -109,7 +158,7 @@ class Calendar extends React.Component {
       allDay = false
     }
 
-    const updatedEvent = { ...event, start, end, allDay }
+    const updatedEvent = { ...event, start, end, resourceId, allDay }
 
     const nextEvents = [...events]
     nextEvents.splice(idx, 1, updatedEvent)
@@ -127,6 +176,15 @@ class Calendar extends React.Component {
     console.log(date);
     
   }
+
+  handleClickOpen = () => {
+    this.setState({ open: true });
+  };
+
+  handleClose = (d) => {
+    console.log(d);
+    this.setState({ open: false });
+  };
   
 
   render() {
@@ -162,23 +220,34 @@ class Calendar extends React.Component {
           events={this.state.events}
           localizer={localizer}
           defaultView={BigCalendar.Views.DAY}
-          views={['month', 'day', 'week']}
+          views={['month', 'day', 'week', 'agenda']}
           step={60}
           selectable={true}
           resizable={true}
           defaultDate={new Date()}
-          resources={resourceMap}
+          resources={resourceMap} // include resources 
           resourceIdAccessor="resourceId" 
           resourceTitleAccessor="resourceTitle"
           onSelectSlot={this.handleSelect}
           onSelectEvent={this.showEvent}
           onEventDrop={this.moveEvent}
           onEventResize={this.resizeEvent}
+          formats={{ eventTimeRangeFormat: () => null }} //remove time range from event view 
+          components={{
+            //event: MonthEvent,
+            eventWrapper: MonthEvent,
+            agenda: {
+              event: EventAgenda,
+            },
+          }}
+          popup
         />
 
-        <a href="/resourse-calendar">resourse calendar</a>
+        <Dialog openDialog={this.handleClickOpen} closeDialog={this.handleClose} type={this.state.type} open={this.state.open} eventInfo={this.state.currentEventSelection} />
 
-        {/* <Modal open={this.state.isAddModalOpen} toggle={this.toggleAddModal} event={'test'}></Modal> */}
+         <a href="/resourse-calendar">resourse calendar</a>
+ 
+       
       </div>
     )
   }
